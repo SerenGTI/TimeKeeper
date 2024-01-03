@@ -1,0 +1,15 @@
+#!/bin/bash
+
+pyhton3=/bin/python3
+
+# Argument $1 is the operation
+# This is followed by (${@:2}) the arguments to the operation.
+additional_args=${@:2}
+
+if [[ $1 == "view" || $1 == "v" ]]; then
+    $pyhton3 view.py $additional_args
+
+else
+    echo "Unknown operation $1"
+fi
+
