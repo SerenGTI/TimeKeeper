@@ -7,7 +7,6 @@ import holidays
 work_per_week = dt.timedelta(hours=39, minutes=30)
 work_per_day = work_per_week / 5
 
-local_holidays = holidays.country_holidays("DE", subdiv="BW")
 
 class DataFile:
     # 2023-01-03 13:30 - 18:00
@@ -17,6 +16,11 @@ class DataFile:
     work_times = {}
 
     start_date = None
+    local_holidays = None
+
+    # fallback country and region
+    _country = "US"
+    _region = None
 
     def __init__(self):
         with open("local.tkpdata") as file:
@@ -54,11 +58,17 @@ class DataFile:
                 except KeyError:
                     self.work_times[date] = work_duration
 
+        self.local_holidays = holidays.country_holidays(self.country, subdiv=self.region)
+
     def loadMetaData(self, line: str):
         line = line[1:-1] # discard $ at the beginning and \n at the end
         a = line.split("=")
         if a[0] == "start":
             self.start_date = dt.date.fromisoformat(a[1])
+        elif a[0] == "country":
+            self.country = a[1]
+        elif a[0] == "region":
+            self.region = a[1]
         else:
             print(f"Ignoring unknown meta data config flag '{a[0]}'")
 
@@ -70,7 +80,7 @@ class DataFile:
 
     def getActual(self, date: dt.date) -> dt.timedelta:
         duration = dt.timedelta(0)
-        if date in local_holidays and date.weekday() < 5 and (self.start_date == None or self.start_date <= date): # holiday work day
+        if self.isHoliday(date) and date.weekday() < 5 and (self.start_date == None or self.start_date <= date): # holiday work day
             duration += work_per_day
 
         # get work times from database
@@ -79,6 +89,9 @@ class DataFile:
         except KeyError:
             pass
         return duration
+
+    def isHoliday(self, date: dt.date) -> bool:
+        return date in self.local_holidays
 
     def isInWorkTime(self, date: dt.date) -> bool:
         if self.start_date == None:

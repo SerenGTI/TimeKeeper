@@ -57,7 +57,7 @@ def str_week(
         if day.weekday() >= 5:
             # saturday or sunday
             fg = 'dark blue'
-        if day in local_holidays:
+        if data.isHoliday(day):
             # holidays are red (and have priority over sat/sun)
             fg = "light red"
         if not data.isInWorkTime(day):
