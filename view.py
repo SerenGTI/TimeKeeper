@@ -27,8 +27,9 @@ def timedelta_format(td: dt.timedelta) -> str:
     seconds = td.total_seconds()
     minutes = seconds / 60
     hours = int(minutes / 60)
-    minutes = int(minutes - (hours * 60))
-    return str(hours).rjust(2) + "h " + str(minutes).rjust(2) + "min"
+    minutes = abs(int(minutes - (hours * 60)))
+    # align hours 3-wide to accommodate the possible minus
+    return str(hours).rjust(3) + "h " + str(minutes).rjust(2) + "min"
 
 def str_week(
     week: List[dt.date],
@@ -79,7 +80,7 @@ def str_week(
     else:
         completeness = f"{week_sum / week_sum_expected * 100:.0f}".rjust(3)
         # strweek += "  " + timedelta_format(week_sum) + " / " + timedelta_format(work_per_week) + f" ({completeness}%)"
-        strweek += "  " + timedelta_format(week_sum) + f" ({completeness}%)"
+        strweek += " " + timedelta_format(week_sum) + f" ({completeness}%) " + timedelta_format(week_sum - week_sum_expected)
 
     return strweek
 
