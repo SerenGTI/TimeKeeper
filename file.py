@@ -31,6 +31,9 @@ class DataFile:
                 if l[0] == "$":
                     self.loadMetaData(l)
                     continue
+                if l[0] == "#":
+                    # ignore comments
+                    continue
 
                 # Try to find the date of the entry
                 date_str = self.entry_date.match(l).group()

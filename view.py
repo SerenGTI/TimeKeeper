@@ -25,11 +25,16 @@ def week_number(date: dt.date) -> int:
 
 def timedelta_format(td: dt.timedelta) -> str:
     seconds = td.total_seconds()
-    minutes = seconds / 60
+    minutes = abs(seconds / 60)
     hours = int(minutes / 60)
     minutes = abs(int(minutes - (hours * 60)))
-    # align hours 3-wide to accommodate the possible minus
-    return str(hours).rjust(3) + "h " + str(minutes).rjust(2) + "min"
+
+    out = ""
+    if td < dt.timedelta(0):
+        out += "-"
+
+    out += str(abs(hours)).rjust(2) + "h " + str(minutes).rjust(2) + "min"
+    return out
 
 def str_week(
     week: List[dt.date],
