@@ -8,6 +8,7 @@ import re
 from typing import List, Optional, Union
 
 from terminal import *
+from file import *
 
 _holidays = holidays.country_holidays("DE", subdiv="BW")
 
@@ -24,20 +25,33 @@ def week_number(date: dt.date) -> int:
     """
     return dt.date.isocalendar(date)[1]
 
+def timedelta_format(td: dt.timedelta) -> str:
+    seconds = td.total_seconds()
+    minutes = seconds / 60
+    hours = int(minutes / 60)
+    minutes = int(minutes - (hours * 60))
+    return str(hours).rjust(2) + "h " + str(minutes).rjust(2) + "min"
+
 def str_week(
     week: List[dt.date],
     month: int,
     today: dt.date,
-    locale=None
+    locale=None,
+    data=None
 ) -> str:
     # strweek = str(week_number(week[1])).rjust(3) + ":  "
     strweek = ""
-    
+
+    week_sum = dt.timedelta()
+    work_per_day = work_per_week / 5
+
     for day in week:
         if(day.month != month):
             strweek += "   "
             continue
 
+        if data != None:
+            week_sum += data.get(day)
 
         bg = None
         fg = None
@@ -47,16 +61,23 @@ def str_week(
         if day in _holidays:
             # holidays are red (and have priority over sat/sun)
             fg = "light red"
+            if(day.weekday() < 5):
+                # holiday work days are valued as a full work day
+                week_sum += work_per_day
 
         # apply colors
         day_str = colored(str(day.day).rjust(2), fg, bg)
 
         # if today, reverse the colors
         if day == today:
-            day_str = reverse(day_str) # custom styling for today?
+            day_str = reverse(day_str) # custom styling for today
 
         # one space between days
         strweek += day_str + ' '
+
+    completeness = f"{week_sum / work_per_week * 100:.0f}".rjust(3)
+    # strweek += "  " + timedelta_format(week_sum) + " / " + timedelta_format(work_per_week) + f" ({completeness}%)"
+    strweek += "  " + timedelta_format(week_sum) + f" ({completeness}%)"
 
     return strweek
 
@@ -68,6 +89,9 @@ def str_vertical_month(
     # first week day = 0 = monday
     cal = calendar.Calendar(0)
     month_abbr_len = get_month_abbr_len()
+
+    # load stored data
+    data = DataFile()
 
     out = []
     header = " " * month_abbr_len + calendar.weekheader(2)
@@ -83,7 +107,7 @@ def str_vertical_month(
         for week in cal.monthdatescalendar(year, month):
             if not start in week:
                 continue
-            week_str = str_week(week, month, today)
+            week_str = str_week(week, month, today, data=data)
 
             if new_month:
                 mon_str = calendar.month_abbr[month].ljust(month_abbr_len)
@@ -114,7 +138,7 @@ def main():
             if matcher.group(1) != None:
                 # offset the start by the number of weeks
                 start = start + dt.timedelta(days=7*int(matcher.group(1)))
-            
+
             if matcher.group(2) != None:
                 # offset the end by the number of weeks
                 end = end + dt.timedelta(days=7*int(matcher.group(2)))

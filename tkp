@@ -8,7 +8,6 @@ additional_args=${@:2}
 
 if [[ $1 == "view" || $1 == "v" ]]; then
     $pyhton3 view.py $additional_args
-
 else
     echo "Unknown operation $1"
 fi
