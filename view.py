@@ -2,7 +2,6 @@
 import sys
 import calendar
 import datetime as dt
-import holidays
 import re
 
 from typing import List, Optional, Union
@@ -10,7 +9,6 @@ from typing import List, Optional, Union
 from terminal import *
 from file import *
 
-_holidays = holidays.country_holidays("DE", subdiv="BW")
 
 def get_month_abbr_len() -> int:
     """Calculate the number of characters we need to display the month
@@ -36,34 +34,34 @@ def str_week(
     week: List[dt.date],
     month: int,
     today: dt.date,
+    data,
     locale=None,
-    data=None
 ) -> str:
     # strweek = str(week_number(week[1])).rjust(3) + ":  "
     strweek = ""
 
-    week_sum = dt.timedelta()
-    work_per_day = work_per_week / 5
+    week_sum = dt.timedelta(0)
+    week_sum_expected = dt.timedelta(0)
 
     for day in week:
         if(day.month != month):
             strweek += "   "
             continue
 
-        if data != None:
-            week_sum += data.get(day)
+        week_sum += data.getActual(day)
+        week_sum_expected += data.getExpected(day)
 
         bg = None
         fg = None
         if day.weekday() >= 5:
             # saturday or sunday
             fg = 'dark blue'
-        if day in _holidays:
+        if day in local_holidays:
             # holidays are red (and have priority over sat/sun)
             fg = "light red"
-            if(day.weekday() < 5):
-                # holiday work days are valued as a full work day
-                week_sum += work_per_day
+        if not data.isInWorkTime(day):
+            # if the day is before the begin of the work contract -> gray
+            fg = "dark gray"
 
         # apply colors
         day_str = colored(str(day.day).rjust(2), fg, bg)
@@ -75,9 +73,13 @@ def str_week(
         # one space between days
         strweek += day_str + ' '
 
-    completeness = f"{week_sum / work_per_week * 100:.0f}".rjust(3)
-    # strweek += "  " + timedelta_format(week_sum) + " / " + timedelta_format(work_per_week) + f" ({completeness}%)"
-    strweek += "  " + timedelta_format(week_sum) + f" ({completeness}%)"
+    if week_sum_expected == dt.timedelta(0):
+        # if no work is expected in this week, hide the time overview
+        pass
+    else:
+        completeness = f"{week_sum / week_sum_expected * 100:.0f}".rjust(3)
+        # strweek += "  " + timedelta_format(week_sum) + " / " + timedelta_format(work_per_week) + f" ({completeness}%)"
+        strweek += "  " + timedelta_format(week_sum) + f" ({completeness}%)"
 
     return strweek
 
