@@ -13,7 +13,20 @@ pip3 install holidays
 
 ## Usage
 
-To view the current week, use
+When you start working, simply type
+```bash
+tkp start
+```
+and when you finish, use
+```bash
+tkp stop
+```
+This will create a new entry in you work time database.
+Starting when you are already working is a no-op and will instead print your current work time since the last start.
+Similarly, stopping a work session when you are not working (did not issue `tkp start`) is a no-op as well.
+
+To view your work time over longer durations, use the `view` command.
+To view the current week's statistics use
 ```bash
 tkp view
 ```
@@ -24,6 +37,7 @@ tkp view -1:
 # previous week, current week and next week
 tkp view -1:1
 ```
+
 
 ## Data file
 
