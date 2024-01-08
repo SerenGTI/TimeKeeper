@@ -4,8 +4,60 @@ import re
 import datetime as dt
 import holidays
 
+from log import *
+
 work_per_week = dt.timedelta(hours=39, minutes=30)
 work_per_day = work_per_week / 5
+
+
+def same_day(rhs: dt.datetime, lhs: dt.datetime) -> bool:
+    return rhs.day == lhs.day and rhs.month == lhs.month and rhs.year == lhs.year
+
+class Entry:
+    # 2023-01-03 13:30 - 18:00
+    _entry_date = re.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}")
+    _entry_times = re.compile(".{10} (.{5})( - (.{5}))?")
+
+    start = None
+    end = None
+
+    def __init__(self, line: str):
+        # Try to find the date of the entry
+        date_str = self._entry_date.match(line).group()
+        date = dt.date.fromisoformat(date_str)
+
+        times = self._entry_times.match(line)
+        start_time = dt.time.fromisoformat(times.group(1))
+        self.start = dt.datetime(year=date.year, month=date.month, day=date.day, hour=start_time.hour, minute=start_time.minute)
+
+        end_time = times.group(3) # may be None
+        if end_time == None and dt.date.today() == date:
+            self.end = dt.datetime.now()
+        elif end_time == None and dt.date.today() != date:
+            raise ValueError(f"Could not parse {line} into a data entry.")
+        else:
+            end_time = dt.time.fromisoformat(end_time)
+            self.end = dt.datetime(year=date.year, month=date.month, day=date.day, hour=end_time.hour, minute=end_time.minute)
+
+    def duration(self, reference=None) -> dt.timedelta:
+        if reference == None:
+            if self.end == None:
+                reference = dt.datetime.now()
+            else:
+                reference = self.end
+        return reference - self.start
+
+    def __str__(self):
+        # TODO: work sessions spanning across day boundaries are not registered correctly
+        output = ":".join(str(self.start).split(":")[:-1])
+        if self.end != None:
+            output += " - " + ":".join(str(self.end).split(":")[:-1]).split(" ")[1]
+        return output
+
+    def duration_str(self, reference=None):
+        dur = self.duration(reference)
+        return ":".join(str(dur).split(":")[:-1])
+
 
 
 class DataFile:
@@ -22,8 +74,12 @@ class DataFile:
     _country = "US"
     _region = None
 
+    # File stuff
+    _filename = "local.tkpdata"
+
+
     def __init__(self):
-        with open("local.tkpdata") as file:
+        with open(self._filename, "r") as file:
             for l in file:
                 if l == "\n":
                     continue # skip empty lines
@@ -104,5 +160,59 @@ class DataFile:
             return False
         return True
 
+    def startTracking(self):
+        with open(self._filename, "a+") as file:
+            file.seek(0)
+            for l in file:
+                if l == "\n":
+                    continue # skip empty lines
+                if not l[0] in ["$", "#"]:
+                    # Not a special line
+                    if len(l) <= 17:
+                        entry = Entry(l)
+                        warn(f"You already started working at {str(entry).split(' - ')[0]}. ({entry.duration_str()}h ago)")
+                        return
 
+            new_line = ":".join(str(dt.datetime.now()).split(":")[:-1])
+            file.write(new_line + "\n")
+        print("You are now working.")
+
+    def stopTracking(self):
+        start_found = False
+        entry = None
+
+        file_str = ""
+        with open(self._filename, "r") as file:
+            # file.seek(0)
+            for l in file:
+                if l == "\n":
+                    file_str += l; # skip empty lines
+                    continue
+                if not l[0] in ["$", "#"]:
+                    # Not a special line
+                    if len(l) <= 17:
+                        if start_found:
+                            error("There are multiple unfinished work sessions. Did not modify file.")
+                            return
+                        entry = Entry(l)
+                        entry.end = dt.datetime.now()
+                        if not same_day(entry.start, entry.end):
+                            error("The current work session did not start today. Did not modify file.")
+                        start_found = True
+                        file_str += str(entry) + "\n";
+
+                    else:
+                        file_str += l;
+                else:
+                    file_str += l;
+
+        if not start_found:
+            error("You never started working.")
+            return
+
+        print("You stopped working.")
+        print(f"{entry}. This session was {entry.duration_str()}h long.")
+
+        with open(self._filename, "w") as file:
+            file.write(file_str)
 
