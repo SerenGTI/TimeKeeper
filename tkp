@@ -12,6 +12,8 @@ elif [[ $1 == "start" ]]; then
     $pyhton3 start.py $additional_args
 elif [[ $1 == "stop" ]]; then
     $pyhton3 stop.py $additional_args
+elif [[ $1 == "detail" || $1 == "d" ]]; then
+    $pyhton3 detail.py $additional_args
 else
     echo "Unknown operation $1"
 fi

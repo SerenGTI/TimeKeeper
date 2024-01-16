@@ -48,12 +48,9 @@ def str_week(
 
     week_sum = dt.timedelta(0)
     week_sum_expected = dt.timedelta(0)
+    cal = calendar.Calendar(0)
 
     for day in week:
-        # if(day.month != month):
-        #     strweek += "   "
-        #     continue
-
         week_sum += data.getActual(day)
         week_sum_expected += data.getExpected(day)
 
@@ -72,12 +69,16 @@ def str_week(
         # apply colors
         day_str = colored(str(day.day).rjust(2), fg, bg)
 
+        # add format
+        day_str = day_str + " " + timedelta_format(data.getActual(day))
+
         # if today, reverse the colors
         if day == today:
             day_str = reverse(day_str) # custom styling for today
 
+
         # one space between days
-        strweek += day_str + ' '
+        strweek += day_str + '\n'
 
     if week_sum_expected == dt.timedelta(0):
         # if no work is expected in this week, hide the time overview
@@ -102,8 +103,6 @@ def str_vertical_month(
     data = DataFile()
 
     out = []
-    header = " " * month_abbr_len + calendar.weekheader(2)
-    out.append(header)
 
     today = dt.date.today()
 
@@ -118,11 +117,11 @@ def str_vertical_month(
             week_str = str_week(week, month, today, data=data)
 
             if new_month:
-                mon_str = calendar.month_abbr[month].ljust(month_abbr_len)
+                mon_str = calendar.month_abbr[month].ljust(month_abbr_len) + "\n"
                 new_month = False
             else:
                 mon_str = " " * month_abbr_len
-            line = bold(mon_str) + week_str
+            line = bold(mon_str) + "\n" + week_str
 
             out.append(line)
 
