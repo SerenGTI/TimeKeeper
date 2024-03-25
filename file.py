@@ -17,14 +17,24 @@ class Entry:
     # 2023-01-03 13:30 - 18:00
     _entry_date = re.compile("[0-9]{4}-[0-9]{2}-[0-9]{2}")
     _entry_times = re.compile(".{10} (.{5})( - (.{5}))?")
+    # 2023-01-03 V
+    _entry_vacation = re.compile(".{10} V")
 
+    date = None
     start = None
     end = None
+    vacation = False
 
     def __init__(self, line: str):
         # Try to find the date of the entry
         date_str = self._entry_date.match(line).group()
         date = dt.date.fromisoformat(date_str)
+        self.date = date
+
+        if self._entry_vacation.match(line):
+            # found vacation
+            self.vacation = True
+            return
 
         times = self._entry_times.match(line)
         start_time = dt.time.fromisoformat(times.group(1))
@@ -58,6 +68,9 @@ class Entry:
         dur = self.duration(reference)
         return ":".join(str(dur).split(":")[:-1])
 
+    def is_vacation(self) -> bool:
+        return self.vacation
+
 
 
 class DataFile:
@@ -66,6 +79,7 @@ class DataFile:
     entry_times = re.compile(".{10} (.{5})( - (.{5}))?")
 
     work_times = {}
+    vacation = {}
 
     start_date = None
     local_holidays = None
@@ -91,31 +105,16 @@ class DataFile:
                     # ignore comments
                     continue
 
-                # Try to find the date of the entry
-                date_str = self.entry_date.match(l).group()
-                date = dt.date.fromisoformat(date_str)
+                day = Entry(l)
 
-                times = self.entry_times.match(l)
-                start_time = dt.time.fromisoformat(times.group(1))
-                start = dt.datetime(year=date.year, month=date.month, day=date.day, hour=start_time.hour, minute=start_time.minute)
-
-
-                end_time = times.group(3) # may be None
-                if end_time == None and dt.date.today() == date:
-                    end = dt.datetime.now()
-                elif end_time == None and dt.date.today() != date:
-                    print("Error in the file at line", l)
-                    exit()
-                else:
-                    end_time = dt.time.fromisoformat(end_time)
-                    end = dt.datetime(year=date.year, month=date.month, day=date.day, hour=end_time.hour, minute=end_time.minute)
-
-                work_duration = end-start
+                if day.is_vacation():
+                    self.vacation[day.date] = True
+                    continue
 
                 try:
-                    self.work_times[date] += work_duration
+                    self.work_times[day.date] += day.duration()
                 except KeyError:
-                    self.work_times[date] = work_duration
+                    self.work_times[day.date] = day.duration()
 
         self.local_holidays = holidays.country_holidays(self.country, subdiv=self.region)
 
@@ -132,6 +131,8 @@ class DataFile:
             print(f"Ignoring unknown meta data config flag '{a[0]}'")
 
     def getExpected(self, date: dt.date) -> dt.timedelta:
+        if self.isVacation(date):
+            return dt.timedelta(0)
         if date.weekday() >= 5:
             # saturday or sunday
             return dt.timedelta(0)
@@ -159,6 +160,9 @@ class DataFile:
         if date < self.start_date:
             return False
         return True
+
+    def isVacation(self, date: dt.date) -> bool:
+        return date in self.vacation
 
     def startTracking(self):
         with open(self._filename, "a+") as file:

@@ -65,12 +65,17 @@ def str_week(
         if not data.isInWorkTime(day):
             # if the day is before the begin of the work contract -> gray
             fg = "dark gray"
+        if data.isVacation(day):
+            fg = "light green"
 
         # apply colors
         day_str = colored(str(day.day).rjust(2), fg, bg)
 
         # add format
         day_str = day_str + " " + timedelta_format(data.getActual(day))
+        if(data.getExpected(day) > dt.timedelta(0)):
+            percentage_today = f"({data.getActual(day) / data.getExpected(day) * 100:.0f}%)".rjust(6)
+            day_str += " " + percentage_today
 
         # if today, reverse the colors
         if day == today:

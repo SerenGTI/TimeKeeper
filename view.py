@@ -68,6 +68,8 @@ def str_week(
         if not data.isInWorkTime(day):
             # if the day is before the begin of the work contract -> gray
             fg = "dark gray"
+        if data.isVacation(day):
+            fg = "light green"
 
         # apply colors
         day_str = colored(str(day.day).rjust(2), fg, bg)
