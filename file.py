@@ -174,6 +174,8 @@ class DataFile:
                     # Not a special line
                     if len(l) <= 17:
                         entry = Entry(l)
+                        if entry.is_vacation():
+                            continue
                         warn(f"You already started working at {str(entry).split(' - ')[0]}. ({entry.duration_str()}h ago)")
                         return
 
@@ -199,6 +201,9 @@ class DataFile:
                             error("There are multiple unfinished work sessions. Did not modify file.")
                             return
                         entry = Entry(l)
+                        if entry.is_vacation():
+                            file_str += str(entry) + "\n";
+                            continue
                         entry.end = dt.datetime.now()
                         if not same_day(entry.start, entry.end):
                             error("The current work session did not start today. Did not modify file.")
